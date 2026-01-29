@@ -175,21 +175,21 @@
                 android:background="@drawable/dpad_center" />
         </RelativeLayout>
 
-        <!-- Analog Stick (Below D-Pad) -->
+        <!-- Analog Stick (130° from D-Pad - Lower Left Diagonal) -->
         <FrameLayout
             android:id="@+id/analog_area"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
+            android:layout_width="90dp"
+            android:layout_height="90dp"
             android:layout_below="@id/dpad_container"
-            android:layout_alignStart="@id/dpad_container"
-            android:layout_marginStart="30dp"
-            android:layout_marginTop="16dp"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="-20dp"
             android:background="@drawable/analog_background">
 
             <View
                 android:id="@+id/analog_stick"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_gravity="center"
                 android:background="@drawable/analog_stick" />
         </FrameLayout>

@@ -141,6 +141,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         SwitchMaterial autoConnectSwitch = dialogView.findViewById(R.id.switch_auto_connect);
         SwitchMaterial showLatencySwitch = dialogView.findViewById(R.id.switch_show_latency);
         SwitchMaterial vibrationSwitch = dialogView.findViewById(R.id.switch_vibration);
+        SwitchMaterial darkModeSwitch = dialogView.findViewById(R.id.switch_dark_mode);
         
         // Pre-fill with saved values
         ipInput.setText(connectionManager.getSavedIp());
@@ -149,6 +150,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         autoConnectSwitch.setChecked(settingsManager.isAutoConnect());
         showLatencySwitch.setChecked(settingsManager.isShowLatency());
         vibrationSwitch.setChecked(settingsManager.isVibrationEnabled());
+        darkModeSwitch.setChecked(settingsManager.isDarkMode());
         
         new AlertDialog.Builder(this)
             .setTitle("Settings")
@@ -159,6 +161,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
                 settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
+                settingsManager.setDarkMode(darkModeSwitch.isChecked());
                 updateLatencyVisibility();
                 
                 String ip = ipInput.getText().toString().trim();
@@ -184,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
                 settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
+                settingsManager.setDarkMode(darkModeSwitch.isChecked());
                 updateLatencyVisibility();
             })
             .setNeutralButton("Disconnect", (dialog, which) -> {
@@ -192,6 +196,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
                 settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
+                settingsManager.setDarkMode(darkModeSwitch.isChecked());
                 updateLatencyVisibility();
                 connectionManager.disconnect();
             })

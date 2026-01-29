@@ -66,4 +66,13 @@ public class SettingsManager {
     public void setVibrationEnabled(boolean enabled) {
         prefs.edit().putBoolean("vibration_enabled", enabled).apply();
     }
+    
+    // Dark Mode
+    public boolean isDarkMode() {
+        return prefs.getBoolean("dark_mode", true); // Default is dark
+    }
+    
+    public void setDarkMode(boolean enabled) {
+        prefs.edit().putBoolean("dark_mode", enabled).apply();
+    }
 }
