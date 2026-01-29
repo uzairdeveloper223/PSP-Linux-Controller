@@ -140,6 +140,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         SwitchMaterial turboSwitch = dialogView.findViewById(R.id.switch_turbo);
         SwitchMaterial autoConnectSwitch = dialogView.findViewById(R.id.switch_auto_connect);
         SwitchMaterial showLatencySwitch = dialogView.findViewById(R.id.switch_show_latency);
+        SwitchMaterial vibrationSwitch = dialogView.findViewById(R.id.switch_vibration);
         
         // Pre-fill with saved values
         ipInput.setText(connectionManager.getSavedIp());
@@ -147,6 +148,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         turboSwitch.setChecked(settingsManager.isTurboMode());
         autoConnectSwitch.setChecked(settingsManager.isAutoConnect());
         showLatencySwitch.setChecked(settingsManager.isShowLatency());
+        vibrationSwitch.setChecked(settingsManager.isVibrationEnabled());
         
         new AlertDialog.Builder(this)
             .setTitle("Settings")
@@ -156,6 +158,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setTurboMode(turboSwitch.isChecked());
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
                 updateLatencyVisibility();
                 
                 String ip = ipInput.getText().toString().trim();
@@ -180,6 +183,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setTurboMode(turboSwitch.isChecked());
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
                 updateLatencyVisibility();
             })
             .setNeutralButton("Disconnect", (dialog, which) -> {
@@ -187,6 +191,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 settingsManager.setTurboMode(turboSwitch.isChecked());
                 settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
                 settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                settingsManager.setVibrationEnabled(vibrationSwitch.isChecked());
                 updateLatencyVisibility();
                 connectionManager.disconnect();
             })
@@ -195,7 +200,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     
     private void updateLatencyVisibility() {
         if (latencyText != null) {
-            latencyText.setVisibility(settingsManager.isShowLatency() ? View.VISIBLE : View.GONE);
+            latencyText.setVisibility(settingsManager.isShowLatency() ? View.VISIBLE : View.INVISIBLE);
         }
     }
     
@@ -253,6 +258,8 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     }
     
     private void vibrateButton() {
+        if (!settingsManager.isVibrationEnabled()) return;
+        
         if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 vibrator.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE));
@@ -406,10 +413,12 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     private void updateConnectionStatus(boolean connected) {
         if (connected) {
             statusText.setText("Connected");
+            statusText.setTextColor(0xFF4CAF50); // Green
             statusIndicator.setBackgroundResource(R.drawable.status_connected);
             connectButton.setText("Connected ●");
         } else {
             statusText.setText("Disconnected");
+            statusText.setTextColor(0xFFE94560); // Red/Pink
             statusIndicator.setBackgroundResource(R.drawable.status_disconnected);
             connectButton.setText("Connect");
             if (latencyText != null) {

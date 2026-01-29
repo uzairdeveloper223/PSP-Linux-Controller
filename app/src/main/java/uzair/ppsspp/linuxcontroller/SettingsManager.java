@@ -57,4 +57,13 @@ public class SettingsManager {
     public void setTurboInterval(int intervalMs) {
         prefs.edit().putInt(PREF_TURBO_INTERVAL, intervalMs).apply();
     }
+    
+    // Vibration
+    public boolean isVibrationEnabled() {
+        return prefs.getBoolean("vibration_enabled", true);
+    }
+    
+    public void setVibrationEnabled(boolean enabled) {
+        prefs.edit().putBoolean("vibration_enabled", enabled).apply();
+    }
 }
