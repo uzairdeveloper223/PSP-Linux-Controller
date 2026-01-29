@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1a1a2e">
+
+    <!-- Top Bar -->
+    <LinearLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_alignParentTop="true"
+        android:background="#16213e"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <View
+            android:id="@+id/status_indicator"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/status_disconnected" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Disconnected"
+            android:textColor="#e94560"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_connect"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/button_connect"
+            android:paddingHorizontal="16dp"
+            android:text="Connect"
+            android:textColor="#ffffff"
+            android:textSize="12sp" />
+
+        <ImageButton
+            android:id="@+id/btn_settings"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_settings"
+            android:contentDescription="Settings"
+            android:src="@drawable/ic_settings" />
+    </LinearLayout>
+
+    <!-- Shoulder Buttons -->
+    <LinearLayout
+        android:id="@+id/shoulder_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_below="@id/top_bar"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+
+        <Button
+            android:id="@+id/btn_l"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/button_shoulder"
+            android:text="L"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="2" />
+
+        <Button
+            android:id="@+id/btn_r"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_shoulder"
+            android:text="R"
+            android:textColor="#ffffff"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Main Controller Area -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/shoulder_buttons"
+        android:layout_above="@id/bottom_bar"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="16dp">
+
+        <!-- D-Pad (Left Side) -->
+        <RelativeLayout
+            android:id="@+id/dpad_container"
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true">
+
+            <ImageButton
+                android:id="@+id/btn_dpad_up"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentTop="true"
+                android:background="@drawable/button_dpad"
+                android:contentDescription="D-Pad Up"
+                android:src="@drawable/ic_arrow_up" />
+
+            <ImageButton
+                android:id="@+id/btn_dpad_down"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentBottom="true"
+                android:background="@drawable/button_dpad"
+                android:contentDescription="D-Pad Down"
+                android:src="@drawable/ic_arrow_down" />
+
+            <ImageButton
+                android:id="@+id/btn_dpad_left"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_centerVertical="true"
+                android:layout_alignParentStart="true"
+                android:background="@drawable/button_dpad"
+                android:contentDescription="D-Pad Left"
+                android:src="@drawable/ic_arrow_left" />
+
+            <ImageButton
+                android:id="@+id/btn_dpad_right"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:layout_centerVertical="true"
+                android:layout_alignParentEnd="true"
+                android:background="@drawable/button_dpad"
+                android:contentDescription="D-Pad Right"
+                android:src="@drawable/ic_arrow_right" />
+
+            <!-- Center circle -->
+            <View
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_centerInParent="true"
+                android:background="@drawable/dpad_center" />
+        </RelativeLayout>
+
+        <!-- Analog Stick (Below D-Pad) -->
+        <FrameLayout
+            android:id="@+id/analog_area"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_below="@id/dpad_container"
+            android:layout_alignStart="@id/dpad_container"
+            android:layout_marginStart="30dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/analog_background">
+
+            <View
+                android:id="@+id/analog_stick"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_gravity="center"
+                android:background="@drawable/analog_stick" />
+        </FrameLayout>
+
+        <!-- Action Buttons (Right Side) - PlayStation Style Layout -->
+        <RelativeLayout
+            android:id="@+id/action_container"
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true">
+
+            <!-- Triangle (Top) -->
+            <Button
+                android:id="@+id/btn_triangle"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentTop="true"
+                android:background="@drawable/button_triangle"
+                android:text="△"
+                android:textColor="#00ff88"
+                android:textSize="24sp" />
+
+            <!-- X (Bottom) -->
+            <Button
+                android:id="@+id/btn_x"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_centerHorizontal="true"
+                android:layout_alignParentBottom="true"
+                android:background="@drawable/button_x"
+                android:text="✕"
+                android:textColor="#5599ff"
+                android:textSize="22sp" />
+
+            <!-- Square (Left) -->
+            <Button
+                android:id="@+id/btn_square"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_centerVertical="true"
+                android:layout_alignParentStart="true"
+                android:background="@drawable/button_square"
+                android:text="□"
+                android:textColor="#ff55aa"
+                android:textSize="24sp" />
+
+            <!-- Circle (Right) -->
+            <Button
+                android:id="@+id/btn_circle"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_centerVertical="true"
+                android:layout_alignParentEnd="true"
+                android:background="@drawable/button_circle"
+                android:text="○"
+                android:textColor="#ff5555"
+                android:textSize="24sp" />
+        </RelativeLayout>
+    </RelativeLayout>
+
+    <!-- Bottom Bar with Start/Select -->
+    <LinearLayout
+        android:id="@+id/bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingHorizontal="48dp"
+        android:paddingBottom="8dp">
+
+        <Button
+            android:id="@+id/btn_select"
+            android:layout_width="100dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="24dp"
+            android:background="@drawable/button_system"
+            android:text="SELECT"
+            android:textColor="#aaaaaa"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/btn_start"
+            android:layout_width="100dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="24dp"
+            android:background="@drawable/button_system"
+            android:text="START"
+            android:textColor="#aaaaaa"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</RelativeLayout>
