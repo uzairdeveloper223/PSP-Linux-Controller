@@ -7,7 +7,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Manages connection to the Linux server and sends commands.
+ * Manages connection to the Linux/Windows server and sends commands.
  */
 public class ConnectionManager implements TcpClient.TcpListener {
     
@@ -20,11 +20,13 @@ public class ConnectionManager implements TcpClient.TcpListener {
     private ConnectionListener listener;
     private SharedPreferences prefs;
     private boolean isConnected = false;
+    private long lastPingTime = 0;
     
     public interface ConnectionListener {
         void onConnected();
         void onDisconnected();
         void onConnectionError(String message);
+        void onLatencyUpdate(long latencyMs);
     }
     
     public ConnectionManager(Context context) {
@@ -115,9 +117,11 @@ public class ConnectionManager implements TcpClient.TcpListener {
     public void sendPing() {
         if (!isConnected()) return;
         
+        lastPingTime = System.currentTimeMillis();
         try {
             JSONObject json = new JSONObject();
             json.put("type", "ping");
+            json.put("timestamp", lastPingTime);
             tcpClient.send(json.toString());
         } catch (JSONException e) {
             e.printStackTrace();
@@ -154,7 +158,21 @@ public class ConnectionManager implements TcpClient.TcpListener {
     
     @Override
     public void onMessageReceived(String message) {
-        // Handle server responses if needed
-        // Currently just for ack/pong
+        // Handle server responses
+        try {
+            JSONObject json = new JSONObject(message);
+            String type = json.optString("type");
+            
+            if ("pong".equals(type)) {
+                // Calculate latency
+                long now = System.currentTimeMillis();
+                long latency = now - lastPingTime;
+                if (listener != null) {
+                    listener.onLatencyUpdate(latency);
+                }
+            }
+        } catch (JSONException e) {
+            // Ignore parse errors
+        }
     }
 }

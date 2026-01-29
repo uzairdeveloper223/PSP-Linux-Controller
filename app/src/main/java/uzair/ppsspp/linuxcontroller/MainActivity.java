@@ -2,12 +2,15 @@ package uzair.ppsspp.linuxcontroller;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -17,6 +20,11 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
+import com.google.android.material.switchmaterial.SwitchMaterial;
+
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Main controller activity with PSP-style layout.
  * Sends button events to Linux server via TCP.
@@ -24,10 +32,24 @@ import androidx.core.view.WindowInsetsControllerCompat;
 public class MainActivity extends AppCompatActivity implements ConnectionManager.ConnectionListener {
 
     private ConnectionManager connectionManager;
+    private SettingsManager settingsManager;
     private TextView statusText;
+    private TextView latencyText;
     private View statusIndicator;
     private Button connectButton;
     private WindowInsetsControllerCompat insetsController;
+    
+    // Turbo mode
+    private Handler turboHandler = new Handler(Looper.getMainLooper());
+    private Map<String, Runnable> turboRunnables = new HashMap<>();
+    
+    // Latency tracking
+    private Handler latencyHandler = new Handler(Looper.getMainLooper());
+    private Runnable latencyRunnable;
+    private long lastPingTime = 0;
+    
+    // Haptic feedback
+    private Vibrator vibrator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,13 +66,16 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         // Setup immersive fullscreen mode
         enableImmersiveMode();
         
-        // Initialize connection manager
+        // Initialize managers
         connectionManager = new ConnectionManager(this);
+        settingsManager = new SettingsManager(this);
+        vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         
         // Get UI references
         statusText = findViewById(R.id.status_text);
         statusIndicator = findViewById(R.id.status_indicator);
         connectButton = findViewById(R.id.btn_connect);
+        latencyText = findViewById(R.id.latency_text);
         
         // Setup buttons
         setupDpad();
@@ -60,33 +85,34 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         setupAnalogStick();
         
         // Connect button
-        connectButton.setOnClickListener(v -> showConnectionDialog());
+        connectButton.setOnClickListener(v -> showSettingsDialog());
         
         // Settings button
-        findViewById(R.id.btn_settings).setOnClickListener(v -> showConnectionDialog());
+        findViewById(R.id.btn_settings).setOnClickListener(v -> showSettingsDialog());
         
         updateConnectionStatus(false);
+        updateLatencyVisibility();
+        
+        // Auto-connect if enabled
+        if (settingsManager.isAutoConnect() && !connectionManager.getSavedIp().isEmpty()) {
+            connectionManager.connect(connectionManager.getSavedIp(), connectionManager.getSavedPort());
+        }
     }
     
     /**
      * Enable immersive fullscreen mode using modern WindowInsetsController API.
-     * Hides status bar, navigation bar, and handles edge-to-edge for Android 16.
      */
     private void enableImmersiveMode() {
         View decorView = getWindow().getDecorView();
         insetsController = WindowCompat.getInsetsController(getWindow(), decorView);
         
         if (insetsController != null) {
-            // Hide both status bar and navigation bar
             insetsController.hide(WindowInsetsCompat.Type.systemBars());
-            
-            // Allow bars to appear temporarily with swipe, then auto-hide
             insetsController.setSystemBarsBehavior(
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             );
         }
         
-        // Legacy flags for older Android versions
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             decorView.setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
@@ -102,25 +128,36 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        // Re-enable immersive mode when window regains focus
         if (hasFocus) {
             enableImmersiveMode();
         }
     }
     
-    private void showConnectionDialog() {
+    private void showSettingsDialog() {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_connect, null);
         EditText ipInput = dialogView.findViewById(R.id.input_ip);
         EditText portInput = dialogView.findViewById(R.id.input_port);
+        SwitchMaterial turboSwitch = dialogView.findViewById(R.id.switch_turbo);
+        SwitchMaterial autoConnectSwitch = dialogView.findViewById(R.id.switch_auto_connect);
+        SwitchMaterial showLatencySwitch = dialogView.findViewById(R.id.switch_show_latency);
         
         // Pre-fill with saved values
         ipInput.setText(connectionManager.getSavedIp());
         portInput.setText(String.valueOf(connectionManager.getSavedPort()));
+        turboSwitch.setChecked(settingsManager.isTurboMode());
+        autoConnectSwitch.setChecked(settingsManager.isAutoConnect());
+        showLatencySwitch.setChecked(settingsManager.isShowLatency());
         
         new AlertDialog.Builder(this)
-            .setTitle("Connect to Server")
+            .setTitle("Settings")
             .setView(dialogView)
             .setPositiveButton("Connect", (dialog, which) -> {
+                // Save settings
+                settingsManager.setTurboMode(turboSwitch.isChecked());
+                settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
+                settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                updateLatencyVisibility();
+                
                 String ip = ipInput.getText().toString().trim();
                 String portStr = portInput.getText().toString().trim();
                 
@@ -138,11 +175,28 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 
                 connectionManager.connect(ip, port);
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Cancel", (dialog, which) -> {
+                // Still save settings even if cancelled
+                settingsManager.setTurboMode(turboSwitch.isChecked());
+                settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
+                settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                updateLatencyVisibility();
+            })
             .setNeutralButton("Disconnect", (dialog, which) -> {
+                // Save settings first
+                settingsManager.setTurboMode(turboSwitch.isChecked());
+                settingsManager.setAutoConnect(autoConnectSwitch.isChecked());
+                settingsManager.setShowLatency(showLatencySwitch.isChecked());
+                updateLatencyVisibility();
                 connectionManager.disconnect();
             })
             .show();
+    }
+    
+    private void updateLatencyVisibility() {
+        if (latencyText != null) {
+            latencyText.setVisibility(settingsManager.isShowLatency() ? View.VISIBLE : View.GONE);
+        }
     }
     
     private void setupDpad() {
@@ -175,17 +229,65 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             button.setOnTouchListener((v, event) -> {
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        connectionManager.sendButtonPress(buttonName);
+                        vibrateButton();
+                        if (settingsManager.isTurboMode()) {
+                            startTurbo(buttonName);
+                        } else {
+                            connectionManager.sendButtonPress(buttonName);
+                        }
                         v.setPressed(true);
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
-                        connectionManager.sendButtonRelease(buttonName);
+                        if (settingsManager.isTurboMode()) {
+                            stopTurbo(buttonName);
+                        } else {
+                            connectionManager.sendButtonRelease(buttonName);
+                        }
                         v.setPressed(false);
                         return true;
                 }
                 return false;
             });
+        }
+    }
+    
+    private void vibrateButton() {
+        if (vibrator != null && vibrator.hasVibrator()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                vibrator.vibrate(10);
+            }
+        }
+    }
+    
+    private void startTurbo(String buttonName) {
+        // Stop any existing turbo for this button
+        stopTurbo(buttonName);
+        
+        int interval = settingsManager.getTurboInterval();
+        
+        Runnable turboRunnable = new Runnable() {
+            @Override
+            public void run() {
+                connectionManager.sendButtonPress(buttonName);
+                turboHandler.postDelayed(() -> {
+                    connectionManager.sendButtonRelease(buttonName);
+                }, interval / 2);
+                turboHandler.postDelayed(this, interval);
+            }
+        };
+        
+        turboRunnables.put(buttonName, turboRunnable);
+        turboHandler.post(turboRunnable);
+    }
+    
+    private void stopTurbo(String buttonName) {
+        Runnable runnable = turboRunnables.remove(buttonName);
+        if (runnable != null) {
+            turboHandler.removeCallbacks(runnable);
+            connectionManager.sendButtonRelease(buttonName);
         }
     }
     
@@ -205,18 +307,15 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                         float dx = event.getX() - centerX;
                         float dy = event.getY() - centerY;
                         
-                        // Clamp to max radius
                         float distance = (float) Math.sqrt(dx * dx + dy * dy);
                         if (distance > maxRadius) {
                             dx = dx * maxRadius / distance;
                             dy = dy * maxRadius / distance;
                         }
                         
-                        // Move analog stick visual
                         analogStick.setTranslationX(dx);
                         analogStick.setTranslationY(dy);
                         
-                        // Normalize to -1 to 1
                         float normalX = dx / maxRadius;
                         float normalY = dy / maxRadius;
                         
@@ -225,7 +324,6 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                         
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
-                        // Reset to center
                         analogStick.setTranslationX(0);
                         analogStick.setTranslationY(0);
                         connectionManager.sendAnalog(0, 0);
@@ -236,11 +334,37 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         }
     }
     
+    private void startLatencyMonitor() {
+        if (latencyRunnable != null) {
+            latencyHandler.removeCallbacks(latencyRunnable);
+        }
+        
+        latencyRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (connectionManager.isConnected()) {
+                    lastPingTime = System.currentTimeMillis();
+                    connectionManager.sendPing();
+                }
+                latencyHandler.postDelayed(this, 1000); // Check every second
+            }
+        };
+        latencyHandler.post(latencyRunnable);
+    }
+    
+    private void stopLatencyMonitor() {
+        if (latencyRunnable != null) {
+            latencyHandler.removeCallbacks(latencyRunnable);
+            latencyRunnable = null;
+        }
+    }
+    
     @Override
     public void onConnected() {
         runOnUiThread(() -> {
             updateConnectionStatus(true);
             Toast.makeText(this, "Connected!", Toast.LENGTH_SHORT).show();
+            startLatencyMonitor();
         });
     }
     
@@ -248,6 +372,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     public void onDisconnected() {
         runOnUiThread(() -> {
             updateConnectionStatus(false);
+            stopLatencyMonitor();
         });
     }
     
@@ -256,6 +381,25 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         runOnUiThread(() -> {
             updateConnectionStatus(false);
             Toast.makeText(this, "Error: " + message, Toast.LENGTH_LONG).show();
+            stopLatencyMonitor();
+        });
+    }
+    
+    @Override
+    public void onLatencyUpdate(long latencyMs) {
+        runOnUiThread(() -> {
+            if (latencyText != null && settingsManager.isShowLatency()) {
+                latencyText.setText(latencyMs + " ms");
+                
+                // Color based on latency
+                if (latencyMs < 20) {
+                    latencyText.setTextColor(0xFF4CAF50); // Green
+                } else if (latencyMs < 50) {
+                    latencyText.setTextColor(0xFFFFEB3B); // Yellow
+                } else {
+                    latencyText.setTextColor(0xFFF44336); // Red
+                }
+            }
         });
     }
     
@@ -268,12 +412,20 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             statusText.setText("Disconnected");
             statusIndicator.setBackgroundResource(R.drawable.status_disconnected);
             connectButton.setText("Connect");
+            if (latencyText != null) {
+                latencyText.setText("-- ms");
+            }
         }
     }
     
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopLatencyMonitor();
+        // Stop all turbo buttons
+        for (String button : turboRunnables.keySet()) {
+            stopTurbo(button);
+        }
         if (connectionManager != null) {
             connectionManager.disconnect();
         }
