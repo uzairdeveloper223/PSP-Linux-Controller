@@ -509,9 +509,9 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         
         if (vibrator != null && vibrator.hasVibrator()) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE));
+                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE));
             } else {
-                vibrator.vibrate(10);
+                vibrator.vibrate(30);
             }
         }
     }
