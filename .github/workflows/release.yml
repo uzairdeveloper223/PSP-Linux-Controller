@@ -64,7 +64,7 @@ jobs:
             - **PSPLinuxController-Server-${{ steps.version.outputs.VERSION }}.tar.gz** - Linux server + layout editor
             
             ### Quick Start
-            1. Extract the server tarball and run `python3 psp_controller_server.py`
+            1. Extract the server tarball and run `./start_server.sh`
             2. Install the APK on your phone
             3. Connect to your PC's IP address
             4. Launch PPSSPP and play!
