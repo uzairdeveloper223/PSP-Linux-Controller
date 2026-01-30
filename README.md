@@ -128,7 +128,7 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 
 # Run the server (no build needed, it's Python)
 cd server
-python3 psp_controller_server.py
+./start_server.sh
 ```
 
 ## License
