@@ -48,9 +48,10 @@ jobs:
             start_server.sh
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: PSP Linux Controller v${{ steps.version.outputs.VERSION }}
+          make_latest: true
           body: |
             ## PSP Linux Controller v${{ steps.version.outputs.VERSION }}
             
