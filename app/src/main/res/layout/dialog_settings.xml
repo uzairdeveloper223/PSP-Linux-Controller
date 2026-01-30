@@ -11,61 +11,6 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <!-- Connection Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Connection"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorPrimary"
-        android:layout_marginBottom="8dp" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="Server IP Address">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/input_ip"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:hint="Port (default: 5555)">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/input_port"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number"
-            android:maxLines="1"
-            android:text="5555" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginVertical="16dp"
-        android:background="#33ffffff" />
-
-    <!-- Settings Section -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Settings"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorPrimary"
-        android:layout_marginBottom="12dp" />
-
     <!-- Turbo Mode -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -139,7 +84,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -173,7 +119,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="8dp">
+        android:layout_marginBottom="8dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -206,8 +152,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginTop="8dp">
+        android:gravity="center_vertical">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -224,7 +169,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Use dark theme (already default)"
+                android:text="Use dark theme"
                 android:textSize="12sp"
                 android:textColor="#888888" />
         </LinearLayout>
@@ -234,6 +179,95 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
     </LinearLayout>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="#333355" />
+
+    <!-- Layout Customization Section -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Layout Presets"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#4CAF50"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Use desktop editor for custom layouts"
+        android:textSize="12sp"
+        android:textColor="#888888"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Preset Layout Spinner -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Preset Layout"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Quick apply common layouts"
+                android:textSize="12sp"
+                android:textColor="#888888" />
+        </LinearLayout>
+
+        <Spinner
+            android:id="@+id/spinner_preset"
+            android:layout_width="130dp"
+            android:layout_height="40dp"
+            android:background="@drawable/button_system"
+            android:padding="8dp" />
+    </LinearLayout>
+
+    <!-- Reset Layout Button -->
+    <Button
+        android:id="@+id/btn_reset_layout"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/button_system"
+        android:text="Reset to Default Layout"
+        android:textColor="#ff9800"
+        android:textSize="12sp" />
+
+    <!-- Credits -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="12dp"
+        android:background="#333355" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Made by Uzair"
+        android:textSize="12sp"
+        android:textColor="#666666"
+        android:gravity="center" />
 
 </LinearLayout>
 

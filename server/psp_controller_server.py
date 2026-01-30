@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PSP Controller Server for Linux and Windows
+PSP Controller Server for Linux
 Receives button commands from Android app and simulates keyboard input for PPSSPP.
 """
 
@@ -12,12 +12,7 @@ import time
 import argparse
 import signal
 import sys
-import platform
 from datetime import datetime
-
-# Detect platform
-IS_WINDOWS = platform.system() == 'Windows'
-IS_LINUX = platform.system() == 'Linux'
 
 # PPSSPP Default Key Mappings
 KEY_MAP = {
@@ -48,42 +43,6 @@ KEY_MAP = {
     "analog_right": "l",
 }
 
-# Windows virtual key codes mapping
-if IS_WINDOWS:
-    import ctypes
-    from ctypes import wintypes
-    
-    # Windows Virtual Key Codes
-    VK_CODES = {
-        'Up': 0x26,
-        'Down': 0x28,
-        'Left': 0x25,
-        'Right': 0x27,
-        'z': 0x5A,
-        'x': 0x58,
-        'a': 0x41,
-        's': 0x53,
-        'space': 0x20,
-        'v': 0x56,
-        'q': 0x51,
-        'w': 0x57,
-        'i': 0x49,
-        'j': 0x4A,
-        'k': 0x4B,
-        'l': 0x4C,
-    }
-    
-    # Windows API constants
-    KEYEVENTF_KEYDOWN = 0x0000
-    KEYEVENTF_KEYUP = 0x0002
-    KEYEVENTF_EXTENDEDKEY = 0x0001
-    
-    # Extended keys (arrow keys need this flag)
-    EXTENDED_KEYS = {'Up', 'Down', 'Left', 'Right'}
-    
-    # Load user32.dll
-    user32 = ctypes.windll.user32
-
 
 class PSPControllerServer:
     def __init__(self, host='0.0.0.0', port=5555):
@@ -93,22 +52,9 @@ class PSPControllerServer:
         self.running = False
         self.clients = []
         self.clients_lock = threading.Lock()
-        self.ppsspp_window = None
-        self.last_window_check = 0
         
     def check_dependencies(self):
-        """Check if required dependencies are installed."""
-        if IS_LINUX:
-            return self._check_xdotool()
-        elif IS_WINDOWS:
-            return self._check_windows()
-        else:
-            print(f"ERROR: Unsupported platform: {platform.system()}")
-            print("This server only supports Linux and Windows.")
-            return False
-    
-    def _check_xdotool(self):
-        """Check if xdotool is installed (Linux)."""
+        """Check if xdotool is installed."""
         try:
             result = subprocess.run(['which', 'xdotool'], 
                                     capture_output=True, text=True)
@@ -116,136 +62,33 @@ class PSPControllerServer:
                 print("ERROR: xdotool not found!")
                 print("Install it with: sudo apt install xdotool")
                 return False
-            print(f"✓ xdotool found: {result.stdout.strip()}")
+            print(f"[OK] xdotool found: {result.stdout.strip()}")
             return True
         except Exception as e:
             print(f"ERROR checking xdotool: {e}")
             return False
     
-    def _check_windows(self):
-        """Check Windows dependencies."""
-        print("✓ Running on Windows - using native Win32 API")
-        return True
-    
-    def find_ppsspp_window(self):
-        """Find PPSSPP window. Caches result for 5 seconds."""
-        now = time.time()
-        if self.ppsspp_window and (now - self.last_window_check) < 5:
-            return self.ppsspp_window
-        
-        if IS_LINUX:
-            return self._find_ppsspp_linux()
-        elif IS_WINDOWS:
-            return self._find_ppsspp_windows()
-        
-        return None
-    
-    def _find_ppsspp_linux(self):
-        """Find PPSSPP window on Linux using xdotool."""
-        try:
-            result = subprocess.run(
-                ['xdotool', 'search', '--name', 'PPSSPP'],
-                capture_output=True, text=True, timeout=1
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                windows = result.stdout.strip().split('\n')
-                self.ppsspp_window = windows[0]
-                self.last_window_check = time.time()
-                return self.ppsspp_window
-        except:
-            pass
-        
-        self.ppsspp_window = None
-        return None
-    
-    def _find_ppsspp_windows(self):
-        """Find PPSSPP window on Windows."""
-        try:
-            # Use ctypes to find window
-            hwnd = user32.FindWindowW(None, None)
-            
-            # Enumerate windows to find PPSSPP
-            def enum_callback(hwnd, results):
-                length = user32.GetWindowTextLengthW(hwnd)
-                if length > 0:
-                    buff = ctypes.create_unicode_buffer(length + 1)
-                    user32.GetWindowTextW(hwnd, buff, length + 1)
-                    if 'PPSSPP' in buff.value:
-                        results.append(hwnd)
-                return True
-            
-            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
-            results = []
-            user32.EnumWindows(WNDENUMPROC(lambda h, l: enum_callback(h, results)), 0)
-            
-            if results:
-                self.ppsspp_window = results[0]
-                self.last_window_check = time.time()
-                return self.ppsspp_window
-        except:
-            pass
-        
-        self.ppsspp_window = None
-        return None
-    
     def simulate_key(self, key, action):
-        """Simulate key press or release."""
-        if IS_LINUX:
-            return self._simulate_key_linux(key, action)
-        elif IS_WINDOWS:
-            return self._simulate_key_windows(key, action)
-        return False
-    
-    def _simulate_key_linux(self, key, action):
-        """Simulate key using xdotool on Linux."""
+        """Simulate key press or release using xdotool.
+        
+        Keys are sent globally so they work when PPSSPP is focused,
+        including in dialogs like the control mapper.
+        """
         try:
-            window = self.find_ppsspp_window()
-            
             if action == "press":
-                if window:
-                    subprocess.Popen(['xdotool', 'keydown', '--window', window, key], 
-                                    stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.DEVNULL)
-                else:
-                    subprocess.Popen(['xdotool', 'keydown', key], 
-                                    stdout=subprocess.DEVNULL, 
-                                    stderr=subprocess.DEVNULL)
+                subprocess.Popen(['xdotool', 'keydown', key], 
+                                stdout=subprocess.DEVNULL, 
+                                stderr=subprocess.DEVNULL)
             elif action == "release":
-                if window:
-                    subprocess.Popen(['xdotool', 'keyup', '--window', window, key],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL)
-                else:
-                    subprocess.Popen(['xdotool', 'keyup', key],
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL)
+                subprocess.Popen(['xdotool', 'keyup', key],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
             return True
         except Exception as e:
             print(f"Error simulating key {key}: {e}")
             return False
     
-    def _simulate_key_windows(self, key, action):
-        """Simulate key using Win32 API on Windows."""
-        try:
-            if key not in VK_CODES:
-                print(f"Unknown key: {key}")
-                return False
-            
-            vk_code = VK_CODES[key]
-            
-            # Set flags
-            flags = KEYEVENTF_KEYDOWN if action == "press" else KEYEVENTF_KEYUP
-            if key in EXTENDED_KEYS:
-                flags |= KEYEVENTF_EXTENDEDKEY
-            
-            # Send the key event
-            user32.keybd_event(vk_code, 0, flags, 0)
-            return True
-        except Exception as e:
-            print(f"Error simulating key {key}: {e}")
-            return False
-    
-    def handle_command(self, data, client_addr):
+    def handle_command(self, data, client_addr, client_socket=None):
         """Process a command from the client."""
         try:
             command = json.loads(data)
@@ -290,6 +133,68 @@ class PSPControllerServer:
                 
                 return json.dumps({'type': 'ack', 'success': True})
             
+            # Layout Editor Commands
+            elif cmd_type == 'device_info':
+                # Store device info from Android client
+                with self.clients_lock:
+                    self.device_info = {
+                        'width': command.get('width', 1920),
+                        'height': command.get('height', 1080),
+                        'density': command.get('density', 2.75)
+                    }
+                    # Mark this as android client
+                    if client_socket:
+                        self.android_client = client_socket
+                print(f"[DEVICE] Device info received: {self.device_info}")
+                return json.dumps({'type': 'ack', 'success': True})
+            
+            elif cmd_type == 'get_device_info':
+                # Desktop editor requesting device info
+                if hasattr(self, 'device_info'):
+                    return json.dumps({'type': 'device_info', **self.device_info})
+                else:
+                    return json.dumps({'type': 'device_info', 'width': 1920, 'height': 1080, 'density': 2.75})
+            
+            elif cmd_type == 'get_layout':
+                # Desktop editor requesting current layout
+                if hasattr(self, 'current_layout'):
+                    return json.dumps({'type': 'layout', 'controls': self.current_layout})
+                else:
+                    return json.dumps({'type': 'layout', 'controls': {}})
+            
+            elif cmd_type == 'current_layout':
+                # Android phone sent its current layout on connect
+                self.current_layout = command.get('controls', {})
+                print(f"[LAYOUT] Layout received from phone: {len(self.current_layout)} controls")
+                return json.dumps({'type': 'ack', 'success': True})
+            
+            elif cmd_type == 'layout_update':
+                # Android sent layout update
+                self.current_layout = command.get('layout', {})
+                return json.dumps({'type': 'ack', 'success': True})
+            
+            elif cmd_type == 'layout_preview':
+                # Desktop editor sending live preview - forward to Android
+                if hasattr(self, 'android_client') and self.android_client:
+                    try:
+                        forward_cmd = json.dumps(command) + '\n'
+                        self.android_client.send(forward_cmd.encode('utf-8'))
+                    except:
+                        pass
+                return json.dumps({'type': 'ack', 'success': True})
+            
+            elif cmd_type == 'set_layout':
+                # Desktop editor saving layout - forward to Android
+                layout = command.get('layout', {})
+                self.current_layout = layout
+                if hasattr(self, 'android_client') and self.android_client:
+                    try:
+                        forward_cmd = json.dumps({'type': 'set_layout', 'layout': layout}) + '\n'
+                        self.android_client.send(forward_cmd.encode('utf-8'))
+                    except:
+                        pass
+                return json.dumps({'type': 'ack', 'success': True})
+            
             else:
                 return json.dumps({'type': 'error', 'message': f'Unknown command type: {cmd_type}'})
                 
@@ -302,7 +207,7 @@ class PSPControllerServer:
     
     def handle_client(self, client_socket, client_addr):
         """Handle a connected client."""
-        print(f"✓ Client connected: {client_addr[0]}:{client_addr[1]}")
+        print(f"[OK] Client connected: {client_addr[0]}:{client_addr[1]}")
         
         with self.clients_lock:
             self.clients.append(client_socket)
@@ -321,7 +226,7 @@ class PSPControllerServer:
                     while '\n' in buffer:
                         line, buffer = buffer.split('\n', 1)
                         if line.strip():
-                            response = self.handle_command(line.strip(), client_addr)
+                            response = self.handle_command(line.strip(), client_addr, client_socket)
                             client_socket.send((response + '\n').encode('utf-8'))
                             
                 except socket.timeout:
@@ -367,9 +272,9 @@ class PSPControllerServer:
             self.running = True
             
             local_ip = self.get_local_ip()
-            os_name = "Windows" if IS_WINDOWS else "Linux"
             print("\n" + "="*50)
-            print(f"  PSP Controller Server Started! ({os_name})")
+            print("  PSP Controller Server")
+            print("  Made by Uzair")
             print("="*50)
             print(f"  Local IP:  {local_ip}")
             print(f"  Port:      {self.port}")
@@ -381,11 +286,6 @@ class PSPControllerServer:
             while self.running:
                 try:
                     client_socket, client_addr = self.server_socket.accept()
-                    
-                    # Reject localhost connections (likely other processes, not mobile)
-                    if client_addr[0] == '127.0.0.1':
-                        client_socket.close()
-                        continue
                     
                     client_socket.settimeout(5.0)
                     client_thread = threading.Thread(

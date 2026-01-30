@@ -1,8 +1,9 @@
 # PSP Controller Server Dependencies
-# No external Python dependencies required - uses Python standard library only
-# 
-# LINUX: Requires xdotool
-#   Install with: sudo apt install xdotool
 #
-# WINDOWS: No additional dependencies required
-#   Uses native Win32 API via ctypes (included in Python)
+# REQUIRED:
+#   sudo apt install xdotool
+#
+# LAYOUT EDITOR GUI (optional):
+#   pip install PyQt5
+
+PyQt5>=5.15.0

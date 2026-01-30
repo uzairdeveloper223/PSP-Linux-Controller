@@ -27,6 +27,8 @@ public class ConnectionManager implements TcpClient.TcpListener {
         void onDisconnected();
         void onConnectionError(String message);
         void onLatencyUpdate(long latencyMs);
+        void onLayoutPreview(String controlId, float x, float y, float scale, float opacity, boolean visible);
+        void onSetLayout(String layoutJson);
     }
     
     public ConnectionManager(Context context) {
@@ -138,7 +140,61 @@ public class ConnectionManager implements TcpClient.TcpListener {
         }
         // Send initial ping
         sendPing();
+        // Send device info for layout editor
+        sendDeviceInfo();
     }
+    
+    /**
+     * Send device info (screen dimensions, density) to server for layout editor.
+     */
+    public void sendDeviceInfo() {
+        if (!isConnected()) return;
+        
+        try {
+            android.util.DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+            JSONObject json = new JSONObject();
+            json.put("type", "device_info");
+            json.put("width", metrics.widthPixels);
+            json.put("height", metrics.heightPixels);
+            json.put("density", metrics.density);
+            tcpClient.send(json.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Send current layout (all control positions, scales, opacities) to server.
+     * The desktop Layout Editor will use this to initialize with phone's current layout.
+     */
+    public void sendCurrentLayout(LayoutSettingsManager layoutManager) {
+        if (!isConnected()) return;
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "current_layout");
+            
+            JSONObject controls = new JSONObject();
+            String[] controlIds = LayoutSettingsManager.getAllControlIds();
+            
+            for (String controlId : controlIds) {
+                LayoutSettingsManager.ControlSettings settings = layoutManager.getControlSettings(controlId);
+                JSONObject controlJson = new JSONObject();
+                controlJson.put("x", settings.posX);
+                controlJson.put("y", settings.posY);
+                controlJson.put("scale", settings.scale);
+                controlJson.put("opacity", settings.opacity);
+                controlJson.put("visible", settings.visible);
+                controls.put(controlId, controlJson);
+            }
+            
+            json.put("controls", controls);
+            tcpClient.send(json.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
     
     @Override
     public void onDisconnected() {
@@ -169,6 +225,25 @@ public class ConnectionManager implements TcpClient.TcpListener {
                 long latency = now - lastPingTime;
                 if (listener != null) {
                     listener.onLatencyUpdate(latency);
+                }
+            } else if ("layout_preview".equals(type)) {
+                // Live preview from desktop editor
+                if (listener != null) {
+                    String controlId = json.optString("control");
+                    float x = (float) json.optDouble("x", -1);
+                    float y = (float) json.optDouble("y", -1);
+                    float scale = (float) json.optDouble("scale", -1);
+                    float opacity = (float) json.optDouble("opacity", -1);
+                    boolean visible = json.optBoolean("visible", true);
+                    listener.onLayoutPreview(controlId, x, y, scale, opacity, visible);
+                }
+            } else if ("set_layout".equals(type)) {
+                // Save layout from desktop editor
+                if (listener != null) {
+                    JSONObject layout = json.optJSONObject("layout");
+                    if (layout != null) {
+                        listener.onSetLayout(layout.toString());
+                    }
                 }
             }
         } catch (JSONException e) {

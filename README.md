@@ -1,124 +1,146 @@
 # PSP Linux Controller
 
-A wireless controller app for PPSSPP emulator on Linux. Use your Android phone as a PSP controller over WiFi.
+Use your Android phone as a wireless PSP controller for PPSSPP emulator on Linux.
 
-## Features
+![Android App](images/android.jpg)
+![Desktop Layout Editor](images/layout_editor_linux.png)
 
-- **Full PSP Controller Layout**: D-pad, action buttons (△, ○, □, ✕), Start/Select, L/R triggers, and analog stick
-- **Low Latency**: TCP socket connection (~1-5ms on local network)
-- **Connection Status**: Real-time connection indicator
-- **Auto-reconnect**: Automatically saves server IP for quick reconnection
-- **Fullscreen Mode**: Landscape layout with immersive controller experience
+## What It Does
 
-## Quick Start
+This app lets you control PPSSPP running on your Linux PC using your phone as a gamepad. It connects over WiFi with very low latency (typically 1-5ms on a local network).
 
-### 1. Start the Server
+The controller has all the PSP buttons - D-pad, analog stick, action buttons (Triangle, Circle, Square, Cross), shoulders (L/R), and Start/Select.
 
-**On Linux:**
+There's also a desktop layout editor that lets you drag buttons around and see the changes live on your phone. Much easier than fiddling with the phone screen.
+
+## Getting Started
+
+### Step 1: Download
+
+Grab the latest release from the [Releases page](../../releases):
+
+- **PSPLinuxController-x.x.x.apk** - Install this on your Android phone
+- **PSPLinuxController-Server-x.x.x.tar.gz** - Extract this on your Linux PC
+
+### Step 2: Set Up the Server
+
+Extract the server tarball somewhere convenient:
+
 ```bash
-# Install xdotool if not already installed
-sudo apt install xdotool
+tar -xzf PSPLinuxController-Server-*.tar.gz
+cd PSPLinuxController-Server
+```
 
-cd server
+Install xdotool if you don't have it (the server uses this to simulate keyboard input):
+
+```bash
+sudo apt install xdotool
+```
+
+Start the server:
+
+```bash
 ./start_server.sh
 ```
 
-**On Windows:**
-```powershell
-# Just run the batch file (Python required)
-cd server
-start_server.bat
+You'll see something like this:
+
+```
+==================================================
+  PSP Controller Server
+  Made by Uzair
+==================================================
+  Local IP:  192.168.1.100
+  Port:      5555
+==================================================
 ```
 
-The server will display your local IP address. Note this for the Android app.
+Note down that IP address - you'll need it for the phone app.
 
-### 3. Install the Android App
+### Step 3: Install the App
 
-Build and install the APK on your Android phone:
+Transfer the APK to your phone and install it. You might need to allow installing from unknown sources in your phone's settings.
 
-```bash
-./gradlew assembleDebug
-adb install app/build/outputs/apk/debug/app-debug.apk
-```
-
-### 4. Connect
+### Step 4: Connect and Play
 
 1. Open the app on your phone
-2. Tap "Connect"
-3. Enter the IP address shown by the server
-4. Tap "Connect"
+2. Tap the Connect button and enter your PC's IP address
+3. Launch PPSSPP on your PC and load a game
+4. Use your phone as the controller!
 
-### 5. Play!
+## Customizing the Layout
 
-1. Launch PPSSPP on your Linux machine
-2. Start a game
-3. Use your phone as the controller!
-
-## Key Mapping
-
-| PSP Button | Keyboard Key |
-|------------|--------------|
-| D-pad | Arrow Keys |
-| ✕ | Z |
-| ○ | X |
-| □ | A |
-| △ | S |
-| Start | Space |
-| Select | V |
-| L Trigger | Q |
-| R Trigger | W |
-| Analog | I/J/K/L |
-
-## Server Options
+If you want to move buttons around, use the desktop layout editor:
 
 ```bash
-python3 server/psp_controller_server.py --help
-
-Options:
-  -p, --port PORT   Port to listen on (default: 5555)
-  --host HOST       Host to bind to (default: 0.0.0.0)
+pip install PyQt5  # Only needed once
+python3 layout_editor_gui.py
 ```
+
+Drag controls to reposition them. Changes show up on your phone in real-time. Hit Save when you're happy with the layout.
+
+The editor supports undo/redo with Ctrl+Z and Ctrl+Y.
+
+## Default Key Bindings
+
+These are the keyboard keys that get pressed when you tap each button:
+
+| Button | Key |
+|--------|-----|
+| D-pad | Arrow Keys |
+| Cross | Z |
+| Circle | X |
+| Square | A |
+| Triangle | S |
+| Start | Space |
+| Select | V |
+| L / R | Q / W |
+| Analog | I/J/K/L |
+
+You can change these in PPSSPP's control settings if needed.
 
 ## Troubleshooting
 
-### "Connection failed" on Android
+**Can't connect?**
 
-- Make sure your phone and Linux PC are on the same WiFi network
-- Check that the server is running
-- Verify the IP address is correct
-- Check firewall settings: `sudo ufw allow 5555`
+Make sure your phone and PC are on the same WiFi network. You might also need to allow port 5555 through your firewall:
 
-### Keys not working in PPSSPP
-
-- Make sure PPSSPP window is focused
-- Verify xdotool is installed: `which xdotool`
-- Test xdotool manually: `xdotool key z`
-
-### High latency
-
-- Use 5GHz WiFi if available
-- Reduce distance from router
-- Close bandwidth-heavy apps
-
-## Project Structure
-
+```bash
+sudo ufw allow 5555
 ```
-PSPLinuxController/
-├── server/
-│   ├── psp_controller_server.py  # Python TCP server
-│   ├── requirements.txt           # Dependencies
-│   └── start_server.sh           # Startup script
-├── app/
-│   └── src/main/
-│       ├── java/.../
-│       │   ├── MainActivity.java     # Controller UI
-│       │   ├── TcpClient.java        # TCP connection
-│       │   └── ConnectionManager.java # Connection logic
-│       └── res/layout/
-│           └── activity_main.xml     # Controller layout
-└── README.md
+
+**Button presses not working?**
+
+Make sure PPSSPP has focus (click on it). You can test if xdotool is working by running:
+
+```bash
+xdotool key z
+```
+
+## Building From Source
+
+If you want to build the app yourself instead of using the releases:
+
+```bash
+# Build the APK
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
+
+# Run the server (no build needed, it's Python)
+cd server
+python3 psp_controller_server.py
 ```
 
 ## License
 
 Apache License 2.0
+
+---
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+---
+
+Made by Uzair
