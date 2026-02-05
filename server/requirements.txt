@@ -1,9 +1,15 @@
 # PSP Controller Server Dependencies
 #
 # REQUIRED:
-#   sudo apt install xdotool
+#   sudo apt install xdotool wmctrl
 #
 # LAYOUT EDITOR GUI (optional):
 #   pip install PyQt5
+#
+# SCREEN STREAMING (optional):
+#   pip install mss
 
 PyQt5>=5.15.0
+qrcode[pil]>=7.0
+mss>=9.0.0
+Pillow>=9.0.0

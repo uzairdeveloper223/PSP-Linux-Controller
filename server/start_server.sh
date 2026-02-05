@@ -24,6 +24,14 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Check for required Python packages
+if ! python3 -c "import qrcode" &> /dev/null; then
+    echo ""
+    echo "WARNING: qrcode module not found!"
+    echo "For QR code functionality, install with: pip install qrcode[pil]"
+    echo ""
+fi
+
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
