@@ -44,6 +44,7 @@ jobs:
           VERSION=${{ steps.version.outputs.VERSION }}
           cd server
           tar -czvf ../PSPLinuxController-Server-${VERSION}.tar.gz \
+            screen_streamer.py \
             psp_controller_server.py \
             layout_editor_gui.py \
             requirements.txt \
