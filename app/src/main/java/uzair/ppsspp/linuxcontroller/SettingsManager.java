@@ -75,4 +75,13 @@ public class SettingsManager {
     public void setDarkMode(boolean enabled) {
         prefs.edit().putBoolean("dark_mode", enabled).apply();
     }
+    
+    // Game Stream
+    public boolean isGameStreamEnabled() {
+        return prefs.getBoolean("game_stream_enabled", false);
+    }
+    
+    public void setGameStreamEnabled(boolean enabled) {
+        prefs.edit().putBoolean("game_stream_enabled", enabled).apply();
+    }
 }

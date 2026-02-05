@@ -29,6 +29,9 @@ public class ConnectionManager implements TcpClient.TcpListener {
         void onLatencyUpdate(long latencyMs);
         void onLayoutPreview(String controlId, float x, float y, float scale, float opacity, boolean visible);
         void onSetLayout(String layoutJson);
+        void onStreamStart(String url, int port, int width, int height);
+        void onStreamStop();
+        void onStreamError(String message);
     }
     
     public ConnectionManager(Context context) {
@@ -124,6 +127,40 @@ public class ConnectionManager implements TcpClient.TcpListener {
             JSONObject json = new JSONObject();
             json.put("type", "ping");
             json.put("timestamp", lastPingTime);
+            tcpClient.send(json.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Request stream from server with phone's screen dimensions.
+     */
+    public void requestStream(int width, int height) {
+        if (!isConnected()) return;
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "request_stream");
+            json.put("width", width);
+            json.put("height", height);
+            json.put("fps", 30);
+            json.put("quality", 60);
+            tcpClient.send(json.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Request to stop the stream.
+     */
+    public void stopStream() {
+        if (!isConnected()) return;
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "stop_stream");
             tcpClient.send(json.toString());
         } catch (JSONException e) {
             e.printStackTrace();
@@ -244,6 +281,26 @@ public class ConnectionManager implements TcpClient.TcpListener {
                     if (layout != null) {
                         listener.onSetLayout(layout.toString());
                     }
+                }
+            } else if ("stream_start".equals(type)) {
+                // Stream started - contains URL to connect to
+                if (listener != null) {
+                    String url = json.optString("url");
+                    int port = json.optInt("port", 5556);
+                    int width = json.optInt("width", 720);
+                    int height = json.optInt("height", 1280);
+                    listener.onStreamStart(url, port, width, height);
+                }
+            } else if ("stream_stop".equals(type)) {
+                // Stream stopped
+                if (listener != null) {
+                    listener.onStreamStop();
+                }
+            } else if ("stream_error".equals(type)) {
+                // Stream error
+                if (listener != null) {
+                    String errorMsg = json.optString("message", "Stream error");
+                    listener.onStreamError(errorMsg);
                 }
             }
         } catch (JSONException e) {

@@ -18,15 +18,20 @@ import android.widget.FrameLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.webkit.WebView;
+import android.webkit.WebSettings;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
+import com.journeyapps.barcodescanner.ScanContract;
+import com.journeyapps.barcodescanner.ScanOptions;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,6 +62,43 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
     
     // Haptic feedback
     private Vibrator vibrator;
+    
+    // Connection dialog reference
+    private AlertDialog connectionDialog;
+    
+    // Stream view
+    private WebView streamView;
+    private boolean isStreaming = false;
+    
+    // QR Code scanner
+    private final ActivityResultLauncher<ScanOptions> barcodeLauncher = registerForActivityResult(new ScanContract(),
+        result -> {
+            if (result.getContents() != null) {
+                // Parse the QR code content (should be in format "ip:port")
+                String qrContent = result.getContents();
+                String[] parts = qrContent.split(":");
+
+                if (parts.length == 2) {
+                    String ip = parts[0];
+                    String portStr = parts[1];
+
+                    try {
+                        int port = Integer.parseInt(portStr);
+                        connectionManager.connect(ip, port);
+                        Toast.makeText(this, "Connecting to " + ip + ":" + port, Toast.LENGTH_LONG).show();
+                        
+                        // Close the connection dialog after successful scan
+                        if (connectionDialog != null && connectionDialog.isShowing()) {
+                            connectionDialog.dismiss();
+                        }
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(this, "Invalid port in QR code: " + portStr, Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    Toast.makeText(this, "Invalid QR code format. Expected: ip:port", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -161,38 +203,39 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_connection, null);
         EditText ipInput = dialogView.findViewById(R.id.input_ip);
         EditText portInput = dialogView.findViewById(R.id.input_port);
+        Button scanQrButton = dialogView.findViewById(R.id.btn_scan_qr);
         View dialogRoot = dialogView.findViewById(R.id.dialog_root);
-        
+
         // Pre-fill with saved values
         ipInput.setText(connectionManager.getSavedIp());
         portInput.setText(String.valueOf(connectionManager.getSavedPort()));
-        
+
         // Apply background based on dark mode
         if (settingsManager.isDarkMode()) {
             dialogRoot.setBackgroundColor(0xFF1a1a2e);
         } else {
             dialogRoot.setBackgroundColor(0xFFFFFFFF);
         }
-        
+
         AlertDialog dialog = new AlertDialog.Builder(this)
             .setTitle("Connect")
             .setView(dialogView)
             .setPositiveButton("Connect", (d, which) -> {
                 String ip = ipInput.getText().toString().trim();
                 String portStr = portInput.getText().toString().trim();
-                
+
                 if (ip.isEmpty()) {
                     Toast.makeText(this, "Please enter IP address", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                
+
                 int port = 5555;
                 try {
                     port = Integer.parseInt(portStr);
                 } catch (NumberFormatException e) {
                     // Use default
                 }
-                
+
                 connectionManager.connect(ip, port);
             })
             .setNegativeButton("Cancel", null)
@@ -200,15 +243,27 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
                 connectionManager.disconnect();
             })
             .create();
-        
+
+        connectionDialog = dialog;  // Store reference
         dialog.show();
-        
+
         // Set button text colors based on dark mode
         if (settingsManager.isDarkMode()) {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(0xFFFFFFFF);
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(0xFFFFFFFF);
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(0xFFFFFFFF);
         }
+
+        // Set up QR code scanning
+        scanQrButton.setOnClickListener(v -> {
+            ScanOptions options = new ScanOptions();
+            options.setDesiredBarcodeFormats(ScanOptions.QR_CODE);
+            options.setPrompt("Scan QR Code to connect to server");
+            options.setCameraId(0);
+            options.setBeepEnabled(false);
+            options.setBarcodeImageEnabled(true);
+            barcodeLauncher.launch(options);
+        });
     }
     
     private void showSettingsDialog() {
@@ -218,6 +273,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         SwitchMaterial showLatencySwitch = dialogView.findViewById(R.id.switch_show_latency);
         SwitchMaterial vibrationSwitch = dialogView.findViewById(R.id.switch_vibration);
         SwitchMaterial darkModeSwitch = dialogView.findViewById(R.id.switch_dark_mode);
+        SwitchMaterial gameStreamSwitch = dialogView.findViewById(R.id.switch_game_stream);
         View dialogRoot = dialogView.findViewById(R.id.dialog_root);
         
         // Layout customization controls
@@ -230,6 +286,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
         showLatencySwitch.setChecked(settingsManager.isShowLatency());
         vibrationSwitch.setChecked(settingsManager.isVibrationEnabled());
         darkModeSwitch.setChecked(settingsManager.isDarkMode());
+        gameStreamSwitch.setChecked(settingsManager.isGameStreamEnabled());
         
         // Apply background based on dark mode
         if (settingsManager.isDarkMode()) {
@@ -244,6 +301,27 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             applyDarkMode();
             String message = isChecked ? "Dark Mode: On" : "Dark Mode: Off";
             Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+        });
+        
+        // Game stream toggle - start/stop streaming immediately
+        gameStreamSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            settingsManager.setGameStreamEnabled(isChecked);
+            if (isChecked) {
+                if (connectionManager != null && connectionManager.isConnected()) {
+                    requestGameStream();
+                    Toast.makeText(MainActivity.this, "Starting game stream...", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Connect to server first", Toast.LENGTH_SHORT).show();
+                    gameStreamSwitch.setChecked(false);
+                    settingsManager.setGameStreamEnabled(false);
+                }
+            } else {
+                if (connectionManager != null) {
+                    connectionManager.stopStream();
+                }
+                stopGameStream();
+                Toast.makeText(MainActivity.this, "Stream stopped", Toast.LENGTH_SHORT).show();
+            }
         });
         
         // Setup preset spinner
@@ -758,7 +836,7 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             statusText.setText("Connected");
             statusText.setTextColor(0xFF4CAF50); // Green
             statusIndicator.setBackgroundResource(R.drawable.status_connected);
-            connectButton.setText("Connected ●");
+            connectButton.setText("Connected +");
         } else {
             statusText.setText("Disconnected");
             statusText.setTextColor(0xFFE94560); // Red/Pink
@@ -767,13 +845,151 @@ public class MainActivity extends AppCompatActivity implements ConnectionManager
             if (latencyText != null) {
                 latencyText.setText("-- ms");
             }
+            // Stop streaming when disconnected
+            if (isStreaming) {
+                stopGameStream();
+            }
         }
     }
     
+    // Stream callback implementations
+    
+    @Override
+    public void onStreamStart(String url, int port, int width, int height) {
+        runOnUiThread(() -> {
+            startGameStream(url);
+        });
+    }
+    
+    @Override
+    public void onStreamStop() {
+        runOnUiThread(() -> {
+            stopGameStream();
+        });
+    }
+    
+    @Override
+    public void onStreamError(String message) {
+        runOnUiThread(() -> {
+            Toast.makeText(this, "Stream error: " + message, Toast.LENGTH_SHORT).show();
+            stopGameStream();
+        });
+    }
+    
+    /**
+     * Start displaying the game stream in background.
+     */
+    private void startGameStream(String streamUrl) {
+        if (streamView == null) {
+            streamView = findViewById(R.id.stream_view);
+        }
+        
+        if (streamView != null) {
+            android.util.Log.d("PSPController", "Starting stream from: " + streamUrl);
+            
+            // Configure WebView for MJPEG stream
+            WebSettings webSettings = streamView.getSettings();
+            webSettings.setJavaScriptEnabled(true);
+            webSettings.setLoadWithOverviewMode(true);
+            webSettings.setUseWideViewPort(true);
+            webSettings.setBuiltInZoomControls(false);
+            webSettings.setDisplayZoomControls(false);
+            webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+            webSettings.setDomStorageEnabled(true);
+            webSettings.setMediaPlaybackRequiresUserGesture(false);
+            
+            // Allow mixed content for HTTP stream
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+            
+            // Load the MJPEG stream directly - img tag works for MJPEG
+            String html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>"
+                    + "<style>*{margin:0;padding:0}body{background:#000;overflow:hidden}"
+                    + "img{width:100vw;height:100vh;object-fit:cover}</style></head>"
+                    + "<body><img src='" + streamUrl + "' alt='stream'/></body></html>";
+            
+            streamView.loadDataWithBaseURL("http://localhost/", html, "text/html", "UTF-8", null);
+            streamView.setVisibility(View.VISIBLE);
+            isStreaming = true;
+            
+            // Make controller canvas transparent and buttons semi-transparent
+            View controllerCanvas = findViewById(R.id.controller_canvas);
+            if (controllerCanvas != null) {
+                controllerCanvas.setBackgroundColor(0x00000000); // Fully transparent
+                // Make all child controls semi-transparent
+                setControlsTransparency(0.5f);
+            }
+            
+            // Hide the dark background
+            View rootLayout = findViewById(R.id.root_layout);
+            if (rootLayout != null) {
+                rootLayout.setBackgroundColor(0xFF000000); // Pure black for stream
+            }
+        } else {
+            android.util.Log.e("PSPController", "streamView is null!");
+        }
+    }
+    
+    /**
+     * Stop the game stream display.
+     */
+    private void stopGameStream() {
+        if (streamView != null) {
+            streamView.loadUrl("about:blank");
+            streamView.setVisibility(View.GONE);
+        }
+        isStreaming = false;
+        settingsManager.setGameStreamEnabled(false);
+        
+        // Restore controller transparency
+        setControlsTransparency(1.0f);
+        
+        // Restore background color
+        View rootLayout = findViewById(R.id.root_layout);
+        if (rootLayout != null) {
+            rootLayout.setBackgroundColor(0xFF1a1a2e); // Original dark purple
+        }
+    }
+    
+    /**
+     * Set transparency for all controller buttons.
+     */
+    private void setControlsTransparency(float alpha) {
+        int[] controlIds = {
+            R.id.dpad_container,
+            R.id.analog_area,
+            R.id.action_container,
+            R.id.btn_l,
+            R.id.btn_r,
+            R.id.btn_start,
+            R.id.btn_select
+        };
+        
+        for (int id : controlIds) {
+            View control = findViewById(id);
+            if (control != null) {
+                control.setAlpha(alpha);
+            }
+        }
+    }
+    
+    /**
+     * Request game stream from server.
+     */
+    private void requestGameStream() {
+        if (connectionManager != null && connectionManager.isConnected()) {
+            android.util.DisplayMetrics metrics = getResources().getDisplayMetrics();
+            connectionManager.requestStream(metrics.widthPixels, metrics.heightPixels);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         stopLatencyMonitor();
+        // Stop streaming
+        if (connectionManager != null && isStreaming) {
+            connectionManager.stopStream();
+        }
         // Stop all turbo buttons
         for (String button : turboRunnables.keySet()) {
             stopTurbo(button);

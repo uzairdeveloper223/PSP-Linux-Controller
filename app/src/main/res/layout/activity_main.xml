@@ -5,6 +5,13 @@
     android:layout_height="match_parent"
     android:background="#1a1a2e">
 
+    <!-- Stream Background - MJPEG from PPSSPP -->
+    <WebView
+        android:id="@+id/stream_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- Controller Canvas - absolute positioning area -->
     <FrameLayout
         android:id="@+id/controller_canvas"
